@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JS Recon Tool — Bug Bounty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111318;
+  --surface2: #181c23;
+  --surface3: #1e2330;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --muted: #6b7280;
+  --dim: #3d4454;
+  --green: #22d07a;
+  --green-dim: rgba(34,208,122,0.12);
+  --green-glow: rgba(34,208,122,0.25);
+  --amber: #f5a623;
+  --amber-dim: rgba(245,166,35,0.12);
+  --red: #ff5c5c;
+  --red-dim: rgba(255,92,92,0.12);
+  --blue: #4d9fff;
+  --blue-dim: rgba(77,159,255,0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.12);
+  --teal: #2dd4bf;
+  --teal-dim: rgba(45,212,191,0.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Header */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--green);
+}
+
+.logo-icon {
+  width: 28px; height: 28px;
+  border: 1.5px solid var(--green);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: var(--green);
+  box-shadow: 0 0 12px var(--green-glow);
+}
+
+.header-meta {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 56px);
+}
+
+/* Sidebar */
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+}
+
+.sidebar-section {
+  padding: 0 1rem 1.5rem;
+}
+
+.sidebar-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding: 0 0.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--green); background: var(--green-dim); border-color: rgba(34,208,122,0.2); }
+
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px;
+  background: var(--surface3);
+  color: var(--muted);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.nav-item.active .nav-badge {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.75rem 1rem;
+}
+
+/* Stats strip */
+.stats-strip {
+  padding: 0 1rem;
+}
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.stat-val { font-weight: 500; }
+.stat-val.green { color: var(--green); }
+.stat-val.amber { color: var(--amber); }
+.stat-val.red { color: var(--red); }
+
+/* Main */
+main {
+  padding: 2rem;
+  max-width: 960px;
+}
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Panel header */
+.panel-header {
+  margin-bottom: 1.5rem;
+}
+.panel-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.panel-title span { color: var(--green); }
+.panel-desc { font-size: 12px; color: var(--muted); }
+
+/* Input area */
+.input-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.input-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  resize: vertical;
+  min-height: 160px;
+  transition: border-color 0.15s;
+  outline: none;
+}
+textarea:focus { border-color: var(--border2); }
+textarea::placeholder { color: var(--dim); }
+
+.char-count {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* Action bar */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.02em;
+}
+.btn-primary {
+  background: var(--green-dim);
+  border-color: rgba(34,208,122,0.35);
+  color: var(--green);
+}
+.btn-primary:hover {
+  background: rgba(34,208,122,0.2);
+  box-shadow: 0 0 16px var(--green-glow);
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border2);
+  color: var(--muted);
+}
+.btn-secondary:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.btn-danger {
+  background: var(--red-dim);
+  border-color: rgba(255,92,92,0.3);
+  color: var(--red);
+}
+.btn-danger:hover { background: rgba(255,92,92,0.2); }
+
+/* Output */
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.output-title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.output-actions { display: flex; gap: 6px; }
+
+.output-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  min-height: 120px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.output-box::-webkit-scrollbar { width: 4px; }
+.output-box::-webkit-scrollbar-track { background: transparent; }
+.output-box::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* Result groups */
+.result-group { margin-bottom: 1.25rem; }
+.result-group:last-child { margin-bottom: 0; }
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.group-tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tag-aws { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.2); }
+.tag-key { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,92,92,0.2); }
+.tag-token { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+.tag-cloud { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(77,159,255,0.2); }
+.tag-endpoint { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(45,212,191,0.2); }
+.tag-generic { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+.group-count {
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--surface2);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.result-item {
+  font-size: 11.5px;
+  color: var(--text);
+  padding: 5px 10px;
+  margin-bottom: 3px;
+  background: var(--surface2);
+  border-radius: 4px;
+  word-break: break-all;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--border);
+  transition: border-color 0.1s;
+  cursor: pointer;
+}
+.result-item:hover { border-color: var(--border2); }
+.result-item-val { flex: 1; }
+.result-copy {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--dim);
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.result-copy:hover { color: var(--green); border-color: rgba(34,208,122,0.3); }
+.result-copy.copied { color: var(--green); }
+
+/* Empty / loading states */
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--dim);
+  font-size: 12px;
+}
+.empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  opacity: 0.3;
+  display: block;
+}
+
+/* Summary cards */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.summary-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.summary-val { font-size: 22px; font-weight: 700; font-family: 'Space Mono', monospace; }
+.summary-val.green { color: var(--green); }
+.summary-val.amber { color: var(--amber); }
+.summary-val.red { color: var(--red); }
+.summary-val.blue { color: var(--blue); }
+
+/* Severity indicator */
+.severity-bar {
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 6px;
+  background: var(--surface3);
+  overflow: hidden;
+}
+.severity-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+/* Filter chips */
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+  user-select: none;
+}
+.chip:hover { border-color: var(--border2); color: var(--text); }
+.chip.active-chip { border-color: rgba(34,208,122,0.35); color: var(--green); background: var(--green-dim); }
+
+/* How-to page */
+.howto-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 700px) { .howto-grid { grid-template-columns: 1fr; } }
+
+.how-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+.how-card-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.how-card-title .num {
+  width: 20px; height: 20px;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  color: var(--green);
+  flex-shrink: 0;
+}
+.how-card ul {
+  list-style: none;
+  padding: 0;
+}
+.how-card ul li {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 4px 0;
+  padding-left: 12px;
+  position: relative;
+  line-height: 1.5;
+}
+.how-card ul li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--green);
+}
+code {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+}
+
+/* CLI reference */
+.cli-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.cli-title { font-size: 11px; color: var(--green); margin-bottom: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+.cli-cmd {
+  background: var(--bg);
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+.cli-cmd .prompt { color: var(--green); user-select: none; }
+.cli-cmd .comment { color: var(--dim); }
+
+/* Report export */
+.report-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.report-preview .hl { color: var(--text); }
+.report-preview .red { color: var(--red); }
+.report-preview .green { color: var(--green); }
+.report-preview .amber { color: var(--amber); }
+
+/* Animations */
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.result-group { animation: fadeIn 0.2s ease both; }
+.result-group:nth-child(2) { animation-delay: 0.05s; }
+.result-group:nth-child(3) { animation-delay: 0.1s; }
+.result-group:nth-child(4) { animation-delay: 0.15s; }
+
+/* Tooltip */
+.tooltip { position: relative; }
+.tooltip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9;
+}
+
+/* Scrollbar global */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 680px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  main { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">&gt;_</div>
+    JS·RECON
+  </div>
+  <div class="header-meta">bug bounty recon toolkit &nbsp;·&nbsp; v1.0</div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tools</div>
+      <div class="nav-item active" onclick="nav('analyzer')">
+        <div class="nav-dot"></div> JS Analyzer
+        <span class="nav-badge" id="nav-badge-analyzer">—</span>
+      </div>
+      <div class="nav-item" onclick="nav('endpoint')">
+        <div class="nav-dot"></div> Endpoint Mapper
+        <span class="nav-badge" id="nav-badge-endpoint">—</span>
+      </div>
+      <div class="nav-item" onclick="nav('sourcemap')">
+        <div class="nav-dot"></div> Source Map Hunt
+        <span class="nav-badge" id="nav-badge-sourcemap">—</span>
+      </div>
+      <div class="nav-item" onclick="nav('entropy')">
+        <div class="nav-dot"></div> Entropy Scanner
+        <span class="nav-badge" id="nav-badge-entropy">—</span>
+      </div>
+      <div class="nav-item" onclick="nav('report')">
+        <div class="nav-dot"></div> Report Builder
+        <span class="nav-badge">export</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Reference</div>
+      <div class="nav-item" onclick="nav('cli')">
+        <div class="nav-dot"></div> CLI Commands
+      </div>
+      <div class="nav-item" onclick="nav('howto')">
+        <div class="nav-dot"></div> Workflow Guide
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="stats-strip sidebar-section">
+      <div class="sidebar-label">Session Stats</div>
+      <div class="stat-item"><span>Secrets found</span><span class="stat-val red" id="stat-secrets">0</span></div>
+      <div class="stat-item"><span>Endpoints</span><span class="stat-val green" id="stat-endpoints">0</span></div>
+      <div class="stat-item"><span>High entropy</span><span class="stat-val amber" id="stat-entropy">0</span></div>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ANALYZER -->
+    <div id="panel-analyzer" class="panel active">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> JS Analyzer</div>
+        <div class="panel-desc">Deteksi secrets, credentials, dan konfigurasi sensitif dalam JS files</div>
+      </div>
+
+      <div class="input-wrapper">
+        <div class="input-label">Input — JS Source Code</div>
+        <textarea id="js-input" placeholder="Paste JS source code di sini... (minified, bundled, atau readable)&#10;&#10;Tip: gunakan sourcemapper dulu jika file minified dengan source map" oninput="updateCharCount('js-input','cc-analyzer')"></textarea>
+        <div class="char-count" id="cc-analyzer">0 chars</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="runAnalyzer()">▶ Analisis</button>
+        <button class="btn btn-secondary" onclick="loadSampleAnalyzer()">Load Sample</button>
+        <button class="btn btn-secondary" onclick="clearPanel('js-input','analyzer-output')">Clear</button>
+        <button class="btn btn-secondary" onclick="pasteFromClipboard('js-input', function(){runAnalyzer();})">Paste & Run</button>
+      </div>
+
+      <div id="summary-analyzer" style="display:none;">
+        <div class="summary-grid" id="summary-cards-analyzer"></div>
+      </div>
+
+      <div class="filter-chips" id="filter-chips" style="display:none;"></div>
+
+      <div class="output-header">
+        <div class="output-title">Results</div>
+        <div class="output-actions">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="copyAllResults('analyzer-output')">Copy All</button>
+        </div>
+      </div>
+      <div id="analyzer-output" class="output-box">
+        <div class="empty-state">
+          <span class="empty-icon">⬡</span>
+          Paste JS code lalu klik Analisis
+        </div>
+      </div>
+    </div>
+
+    <!-- ENDPOINT MAPPER -->
+    <div id="panel-endpoint" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> Endpoint Mapper</div>
+        <div class="panel-desc">Ekstrak semua API endpoints, URLs, dan route patterns dari JS files</div>
+      </div>
+
+      <div class="input-wrapper">
+        <div class="input-label">Input — JS Source Code</div>
+        <textarea id="ep-input" placeholder="Paste JS source code di sini..." oninput="updateCharCount('ep-input','cc-ep')"></textarea>
+        <div class="char-count" id="cc-ep">0 chars</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="runEndpoint()">▶ Ekstrak Endpoints</button>
+        <button class="btn btn-secondary" onclick="loadSampleEndpoint()">Load Sample</button>
+        <button class="btn btn-secondary" onclick="clearPanel('ep-input','endpoint-output')">Clear</button>
+        <button class="btn btn-secondary" onclick="pasteFromClipboard('ep-input', function(){runEndpoint();})">Paste & Run</button>
+      </div>
+
+      <div id="summary-endpoint" style="display:none;">
+        <div class="summary-grid" id="summary-cards-endpoint"></div>
+      </div>
+
+      <div class="output-header">
+        <div class="output-title">Endpoints Ditemukan</div>
+        <div class="output-actions">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="copyAllResults('endpoint-output')">Copy All</button>
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="exportEndpoints()">Export .txt</button>
+        </div>
+      </div>
+      <div id="endpoint-output" class="output-box">
+        <div class="empty-state">
+          <span class="empty-icon">⬡</span>
+          Paste JS code lalu klik Ekstrak Endpoints
+        </div>
+      </div>
+    </div>
+
+    <!-- SOURCE MAP HUNT -->
+    <div id="panel-sourcemap" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> Source Map Hunt</div>
+        <div class="panel-desc">Generate URL candidates untuk mencari exposed source maps (.map files)</div>
+      </div>
+
+      <div class="input-wrapper">
+        <div class="input-label">Target JS URLs (satu per baris)</div>
+        <textarea id="sm-input" placeholder="https://target.com/static/main.abc123.js&#10;https://target.com/chunk.vendor.js&#10;https://dev.target.com/app.bundle.js" oninput="updateCharCount('sm-input','cc-sm')"></textarea>
+        <div class="char-count" id="cc-sm">0 chars</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="runSourceMap()">▶ Generate Map URLs</button>
+        <button class="btn btn-secondary" onclick="clearPanel('sm-input','sm-output')">Clear</button>
+      </div>
+
+      <div class="output-header">
+        <div class="output-title">Source Map URL Candidates</div>
+        <div class="output-actions">
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="exportSourceMapUrls()">Export untuk ffuf</button>
+        </div>
+      </div>
+      <div id="sm-output" class="output-box">
+        <div class="empty-state">
+          <span class="empty-icon">⬡</span>
+          Masukkan JS URLs → generate kandidat .map files
+        </div>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <div class="input-label">Cek Source Map Reference dalam JS</div>
+        <textarea id="sm-check-input" style="min-height:100px;" placeholder="Paste konten JS file untuk cek apakah ada sourceMappingURL comment di dalamnya..."></textarea>
+        <div class="action-bar" style="margin-top:8px;">
+          <button class="btn btn-primary" onclick="checkSourceMapRef()">▶ Cek Referensi</button>
+        </div>
+        <div id="sm-check-output" class="output-box" style="margin-top:0;">
+          <div class="empty-state"><span class="empty-icon">⬡</span>Paste JS lalu cek</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENTROPY SCANNER -->
+    <div id="panel-entropy" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> Entropy Scanner</div>
+        <div class="panel-desc">Deteksi string dengan entropi tinggi — kemungkinan besar adalah secrets yang belum diketahui polanya</div>
+      </div>
+
+      <div class="input-wrapper">
+        <div class="input-label">Input — JS Source Code</div>
+        <textarea id="ent-input" placeholder="Paste JS source code..." oninput="updateCharCount('ent-input','cc-ent')"></textarea>
+        <div class="char-count" id="cc-ent">0 chars</div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="runEntropy()">▶ Scan Entropy</button>
+        <button class="btn btn-secondary" onclick="loadSampleEntropy()">Load Sample</button>
+        <button class="btn btn-secondary" onclick="clearPanel('ent-input','ent-output')">Clear</button>
+      </div>
+
+      <div class="how-card" style="margin-bottom:1rem;">
+        <div style="font-size:11px;color:var(--muted);line-height:1.7;">
+          <strong style="color:var(--amber);">Shannon Entropy</strong> mengukur keacakan sebuah string. String dengan entropi tinggi (&gt;4.5) biasanya adalah: API keys, secrets, hashed values, encoded credentials.<br>
+          Threshold: <code>3.5–4.0</code> medium · <code>4.0–4.5</code> high · <code>&gt;4.5</code> critical
+        </div>
+      </div>
+
+      <div class="output-header">
+        <div class="output-title">High Entropy Strings</div>
+      </div>
+      <div id="ent-output" class="output-box">
+        <div class="empty-state"><span class="empty-icon">⬡</span>Paste JS lalu scan entropy</div>
+      </div>
+    </div>
+
+    <!-- REPORT BUILDER -->
+    <div id="panel-report" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> Report Builder</div>
+        <div class="panel-desc">Generate draft laporan bug bounty dari temuan session ini</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem;">
+        <div>
+          <div class="input-label">Target Domain</div>
+          <input type="text" id="rpt-target" placeholder="e.g. dev.bia.example.com" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;">
+        </div>
+        <div>
+          <div class="input-label">Program / Platform</div>
+          <input type="text" id="rpt-platform" placeholder="e.g. HackerOne - Acme Corp" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;">
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary" onclick="buildReport()">▶ Generate Report</button>
+        <button class="btn btn-secondary" onclick="copyReport()">Copy Report</button>
+        <button class="btn btn-secondary" onclick="downloadReport()">Download .md</button>
+      </div>
+      <div class="output-header"><div class="output-title">Report Preview (Markdown)</div></div>
+      <div id="report-output" class="output-box report-preview">
+        <div class="empty-state"><span class="empty-icon">⬡</span>Jalankan tool lain dulu, lalu generate report di sini</div>
+      </div>
+    </div>
+
+    <!-- CLI REFERENCE -->
+    <div id="panel-cli" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> CLI Reference</div>
+        <div class="panel-desc">Perintah CLI yang sering dipakai bersamaan tool ini</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">1. Recon — Extract JS Files</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>getJS --url https://target.com --output js-urls.txt</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>katana -u https://target.com -jc -o endpoints.txt <span class="comment"># js crawl</span></div>
+        <div class="cli-cmd"><span class="prompt">$ </span>gospider -s https://target.com -t 10 --js | grep "\.js"</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">2. Download JS Contents</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>cat js-urls.txt | xargs -I{} curl -s {} -o {}.js</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>while read url; do curl -s "$url" >> all.js; done &lt; js-urls.txt</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">3. Source Map Extraction</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>sourcemapper -url https://target.com/main.abc.js -output out/</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>python3 sourcemapper.py --url https://target.com/app.js.map</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">4. Secret Scanning CLI</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>trufflehog filesystem ./out/ --only-verified</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>gitleaks detect --source ./out/ --report-format json</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>grep -rE "(AKIA|ASIA)[A-Z0-9]{16}" ./out/</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>grep -rE "userPoolId|identityPoolId|clientId" ./out/</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">5. Endpoint Extraction CLI</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>linkfinder -i https://target.com/main.js -o cli</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>python3 LinkFinder.py -i ./all.js -o results.html</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>grep -oE '"(/[a-zA-Z0-9_/-]+)"' all.js | sort -u</div>
+      </div>
+
+      <div class="cli-block">
+        <div class="cli-title">6. Source Map Hunting dengan ffuf</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>ffuf -u https://target.com/FUZZ -w sourcemap-candidates.txt -mc 200</div>
+        <div class="cli-cmd"><span class="prompt">$ </span>curl -s https://target.com/main.abc.js.map | python3 -m json.tool</div>
+      </div>
+    </div>
+
+    <!-- HOW TO -->
+    <div id="panel-howto" class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span>//</span> Workflow Guide</div>
+        <div class="panel-desc">Recon methodology untuk JS files dalam bug bounty</div>
+      </div>
+
+      <div class="howto-grid">
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">1</div>Subdomain & JS Discovery</div>
+          <ul>
+            <li>Gunakan <code>subfinder</code> / <code>amass</code> untuk subdomain</li>
+            <li>Fokus ke subdomain dev/staging yang sering kurang aman</li>
+            <li>Gunakan <code>getJS</code> / <code>katana</code> untuk extract semua JS URLs</li>
+            <li>Cek Network tab di DevTools saat load halaman</li>
+          </ul>
+        </div>
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">2</div>Source Map Unpacking</div>
+          <ul>
+            <li>Cek <code>// sourceMappingURL=</code> di akhir JS file</li>
+            <li>Coba akses <code>main.js.map</code> langsung</li>
+            <li>Gunakan <code>sourcemapper</code> untuk extract source tree</li>
+            <li>Source maps sering berisi kode asli dengan komentar dan config</li>
+          </ul>
+        </div>
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">3</div>Secret Detection</div>
+          <ul>
+            <li>Paste ke <strong>JS Analyzer</strong> tab ini</li>
+            <li>Prioritaskan: AWS keys, Cognito config, API keys</li>
+            <li>Gunakan <strong>Entropy Scanner</strong> untuk secrets tak dikenal</li>
+            <li>Double-check dengan <code>trufflehog</code> / <code>gitleaks</code></li>
+          </ul>
+        </div>
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">4</div>Endpoint Mapping</div>
+          <ul>
+            <li>Paste ke <strong>Endpoint Mapper</strong></li>
+            <li>Filter endpoints yang menarik: <code>/admin</code>, <code>/internal</code>, <code>/api</code></li>
+            <li>Uji endpoint yang ditemukan dengan Burp Suite</li>
+            <li>Cari hidden endpoints yang tidak terekspos di UI</li>
+          </ul>
+        </div>
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">5</div>What to Report</div>
+          <ul>
+            <li>Exposed credentials / API keys → Critical/High</li>
+            <li>Cognito config yang memungkinkan self-registration</li>
+            <li>Source maps exposed di production</li>
+            <li>Internal API endpoints terekspos</li>
+            <li>Environment variables bocor (<code>DEV_MODE</code>, <code>DEBUG</code>)</li>
+          </ul>
+        </div>
+        <div class="how-card">
+          <div class="how-card-title"><div class="num">6</div>Etika Bug Bounty</div>
+          <ul>
+            <li>Selalu verifikasi scope sebelum test</li>
+            <li>Jika temukan credentials → <strong>jangan eksploitasi lebih jauh</strong></li>
+            <li>Dokumentasikan proof of existence, bukan proof of exploitation</li>
+            <li>Report segera, jangan hold untuk eskalasi</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const PATTERNS = [
+  { id:'aws_access', label:'AWS Access Key', cat:'aws', re:/(?:AKIA|ASIA|AROA|AIDA)[A-Z0-9]{16}/g },
+  { id:'aws_secret', label:'AWS Secret Key', cat:'aws', re:/(?:aws[_\-\s]?secret|secretAccessKey|SecretKey)\s*[=:'"]+\s*['"]?([A-Za-z0-9\/+]{40})['"]?/gi },
+  { id:'user_pool', label:'Cognito User Pool ID', cat:'aws', re:/(?:userPoolId|UserPoolId)\s*[=:'"]+\s*['"]?([\w\-]+_[A-Za-z0-9]+)['"]?/gi },
+  { id:'identity_pool', label:'Cognito Identity Pool ID', cat:'aws', re:/(?:identityPoolId|IdentityPoolId)\s*[=:'"]+\s*['"]?([\w\-:]+)['"]?/gi },
+  { id:'client_id', label:'App Client ID', cat:'aws', re:/(?:clientId|ClientId|client_id)\s*[=:'"]+\s*['"]?([A-Za-z0-9]{20,60})['"]?/gi },
+  { id:'region', label:'AWS Region', cat:'aws', re:/(?:region)\s*[=:'"]+\s*['"]?((?:us|eu|ap|sa|ca|me|af)-(?:east|west|north|south|central|northeast|southeast)-[0-9])['"]?/gi },
+  { id:'firebase', label:'Firebase Config', cat:'cloud', re:/(?:apiKey|authDomain|projectId|storageBucket|messagingSenderId)\s*[=:'"]+\s*['"]([^'"]{8,120})['"]/gi },
+  { id:'supabase_url', label:'Supabase URL', cat:'cloud', re:/https:\/\/[a-z]{16,26}\.supabase\.co/g },
+  { id:'supabase_key', label:'Supabase Anon Key', cat:'cloud', re:/(?:supabase[_\-]?key|SUPABASE_KEY|NEXT_PUBLIC_SUPABASE[_A-Z]*)\s*[=:'"]+\s*['"]?([A-Za-z0-9._\-]{40,})['"]?/gi },
+  { id:'gcp_key', label:'GCP API Key', cat:'cloud', re:/AIza[0-9A-Za-z\-_]{35}/g },
+  { id:'stripe', label:'Stripe Key', cat:'key', re:/(?:sk_live_|pk_live_|sk_test_|pk_test_)[A-Za-z0-9]{20,}/g },
+  { id:'sendgrid', label:'SendGrid Key', cat:'key', re:/SG\.[A-Za-z0-9\-_]{22,}\.[A-Za-z0-9\-_]{43,}/g },
+  { id:'twilio', label:'Twilio Key', cat:'key', re:/(?:AC[a-z0-9]{32}|SK[a-z0-9]{32})/g },
+  { id:'api_key', label:'Generic API Key', cat:'key', re:/(?:api[_\-]?key|x-api-key|API_KEY)\s*[=:'"]+\s*['"]?([A-Za-z0-9\-_]{20,80})['"]?/gi },
+  { id:'jwt', label:'JWT Token', cat:'token', re:/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/g },
+  { id:'bearer', label:'Bearer Token', cat:'token', re:/[Bb]earer\s+([A-Za-z0-9\-_\.]{20,})/g },
+  { id:'secret_generic', label:'Generic Secret', cat:'token', re:/(?:secret|password|passwd|private_key)\s*[=:'"]+\s*['"]([A-Za-z0-9!@#$%^&*()\-_+=]{8,60})['"]/gi },
+  { id:'private_key_block', label:'Private Key Block', cat:'key', re:/-----BEGIN [A-Z ]+PRIVATE KEY-----/g },
+  { id:'slack_token', label:'Slack Token', cat:'token', re:/xox[baprs]-[A-Za-z0-9\-]{10,}/g },
+  { id:'github_token', label:'GitHub Token', cat:'token', re:/(?:ghp_|gho_|ghu_|ghs_|ghr_)[A-Za-z0-9]{36}/g },
+  { id:'env_var', label:'Env Variable Value', cat:'token', re:/(?:process\.env\.|import\.meta\.env\.)[A-Z_]{4,}\s*(?:\/\/\s*)?(?:=\s*["']([^"']+)["'])?/g },
+];
+
+const EP_PATTERNS = [
+  { label:'fetch() call', re:/fetch\s*\(\s*[`"']([^`"'\s]+)[`"']/g },
+  { label:'axios call', re:/axios\.[a-z]+\s*\(\s*[`"']([^`"']+)[`"']/g },
+  { label:'XMLHttpRequest', re:/\.open\s*\(\s*[`"'][A-Z]+[`"']\s*,\s*[`"']([^`"']+)[`"']/g },
+  { label:'baseURL / apiUrl', re:/(?:baseURL|baseUrl|apiUrl|API_URL|apiBase)\s*[=:]\s*[`"']([^`"']+)[`"']/gi },
+  { label:'endpoint property', re:/(?:endpoint|url|path)\s*:\s*[`"']([^`"']+)[`"']/gi },
+  { label:'route pattern', re:/(?:path|route)\s*[=:]\s*[`"'](\/[^`"']+)[`"']/gi },
+  { label:'full HTTPS URL', re:/[`"'](https?:\/\/(?!fonts\.googleapis|cdnjs\.cloudflare)[^`"'\s]{10,})[`"']/g },
+  { label:'API path', re:/[`"'](\/(?:api|v[0-9]|auth|admin|internal|graphql)[^`"'\s]*)[`"']/g },
+];
+
+const catClass = { aws:'tag-aws', key:'tag-key', token:'tag-token', cloud:'tag-cloud', endpoint:'tag-endpoint' };
+
+let sessionData = {
+  analyzer: [],
+  endpoint: [],
+  entropy: [],
+  sourcemap: [],
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function updateCharCount(tid, cid){
+  const v = document.getElementById(tid).value;
+  document.getElementById(cid).textContent = v.length.toLocaleString() + ' chars';
+}
+
+function clearPanel(inputId, outputId){
+  document.getElementById(inputId).value = '';
+  document.getElementById(outputId).innerHTML = '<div class="empty-state"><span class="empty-icon">⬡</span>Cleared</div>';
+  updateCharCount(inputId, inputId === 'js-input' ? 'cc-analyzer' : inputId === 'ep-input' ? 'cc-ep' : inputId === 'sm-input' ? 'cc-sm' : 'cc-ent');
+}
+
+function copyText(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    if(btn){ const old = btn.textContent; btn.textContent='✓'; btn.classList.add('copied'); setTimeout(()=>{ btn.textContent=old; btn.classList.remove('copied'); },1200); }
+  });
+}
+
+function copyAllResults(outputId){
+  const box = document.getElementById(outputId);
+  const items = box.querySelectorAll('.result-item-val');
+  const text = Array.from(items).map(i=>i.textContent).join('\n');
+  copyText(text);
+}
+
+async function pasteFromClipboard(inputId, cb){
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById(inputId).value = text;
+    const ccId = inputId === 'js-input' ? 'cc-analyzer' : inputId === 'ep-input' ? 'cc-ep' : 'cc-sm';
+    updateCharCount(inputId, ccId);
+    if(cb) cb();
+  } catch(e) {
+    alert('Clipboard access denied. Paste manual dengan Ctrl+V');
+  }
+}
+
+function nav(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    if(n.getAttribute('onclick') === `nav('${name}')`) n.classList.add('active');
+  });
+}
+
+function updateStats(){
+  document.getElementById('stat-secrets').textContent = sessionData.analyzer.reduce((a,g)=>a+g.matches.length,0);
+  document.getElementById('stat-endpoints').textContent = sessionData.endpoint.length;
+  document.getElementById('stat-entropy').textContent = sessionData.entropy.filter(e=>e.score>=4.0).length;
+  document.getElementById('nav-badge-analyzer').textContent = sessionData.analyzer.length ? sessionData.analyzer.reduce((a,g)=>a+g.matches.length,0) : '—';
+  document.getElementById('nav-badge-endpoint').textContent = sessionData.endpoint.length || '—';
+  document.getElementById('nav-badge-entropy').textContent = sessionData.entropy.length || '—';
+}
+
+/* ============================================================
+   JS ANALYZER
+   ============================================================ */
+let activeFilters = new Set(['all']);
+
+function runAnalyzer(){
+  const code = document.getElementById('js-input').value.trim();
+  const out = document.getElementById('analyzer-output');
+  if(!code){ out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Input kosong</div>'; return; }
+
+  const found = [];
+  for(const p of PATTERNS){
+    const matches = [];
+    const re = new RegExp(p.re.source, p.re.flags);
+    let m;
+    while((m = re.exec(code)) !== null){
+      const val = (m[1] || m[0]).trim();
+      if(!matches.includes(val)) matches.push(val);
+    }
+    if(matches.length) found.push({...p, matches});
+  }
+
+  sessionData.analyzer = found;
+  updateStats();
+
+  const sum = document.getElementById('summary-analyzer');
+  const cards = document.getElementById('summary-cards-analyzer');
+
+  if(!found.length){
+    sum.style.display='none';
+    document.getElementById('filter-chips').style.display='none';
+    out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Tidak ditemukan pola sensitif. Coba Entropy Scanner untuk secrets tak dikenal.</div>';
+    return;
+  }
+
+  const total = found.reduce((a,g)=>a+g.matches.length,0);
+  const awsCount = found.filter(g=>g.cat==='aws').reduce((a,g)=>a+g.matches.length,0);
+  const keyCount = found.filter(g=>g.cat==='key').reduce((a,g)=>a+g.matches.length,0);
+  const tokenCount = found.filter(g=>g.cat==='token').reduce((a,g)=>a+g.matches.length,0);
+
+  const severity = total > 5 ? 'red' : total > 2 ? 'amber' : 'green';
+  cards.innerHTML = `
+    <div class="summary-card"><div class="summary-label">Total Temuan</div><div class="summary-val ${severity}">${total}</div><div class="severity-bar"><div class="severity-fill" style="width:${Math.min(100,total*8)}%;background:var(--${severity})"></div></div></div>
+    <div class="summary-card"><div class="summary-label">AWS / Cloud</div><div class="summary-val amber">${awsCount}</div></div>
+    <div class="summary-card"><div class="summary-label">API Keys</div><div class="summary-val red">${keyCount}</div></div>
+    <div class="summary-card"><div class="summary-label">Tokens</div><div class="summary-val blue">${tokenCount}</div></div>
+  `;
+  sum.style.display='block';
+
+  const cats = [...new Set(found.map(g=>g.cat))];
+  const fc = document.getElementById('filter-chips');
+  fc.style.display='flex';
+  fc.innerHTML = `<div class="chip active-chip" data-cat="all" onclick="filterResults('all',this)">Semua (${total})</div>` +
+    cats.map(c=>`<div class="chip" data-cat="${c}" onclick="filterResults('${c}',this)">${c} (${found.filter(g=>g.cat===c).reduce((a,g)=>a+g.matches.length,0)})</div>`).join('');
+
+  renderAnalyzerResults(found);
+}
+
+function filterResults(cat, el){
+  document.querySelectorAll('.filter-chips .chip').forEach(c=>c.classList.remove('active-chip'));
+  el.classList.add('active-chip');
+  const filtered = cat === 'all' ? sessionData.analyzer : sessionData.analyzer.filter(g=>g.cat===cat);
+  renderAnalyzerResults(filtered);
+}
+
+function renderAnalyzerResults(groups){
+  const out = document.getElementById('analyzer-output');
+  let html = '';
+  for(const g of groups){
+    const cls = catClass[g.cat] || 'tag-generic';
+    html += `<div class="result-group">
+      <div class="group-header"><span class="group-tag ${cls}">${g.cat.toUpperCase()}</span><span style="font-size:12px;color:var(--text);">${g.label}</span><span class="group-count">${g.matches.length}</span></div>`;
+    for(const val of g.matches){
+      const display = val.length > 80 ? val.slice(0,40)+'…'+val.slice(-16) : val;
+      html += `<div class="result-item" onclick="copyText('${val.replace(/'/g,"\\'")}')">
+        <span class="result-item-val">${esc(display)}</span>
+        <span class="result-copy" onclick="event.stopPropagation();copyText('${val.replace(/'/g,"\\'")}',this)">copy</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  out.innerHTML = html;
+}
+
+/* ============================================================
+   ENDPOINT MAPPER
+   ============================================================ */
+function runEndpoint(){
+  const code = document.getElementById('ep-input').value.trim();
+  const out = document.getElementById('endpoint-output');
+  if(!code){ out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Input kosong</div>'; return; }
+
+  const seen = new Set();
+  const byLabel = {};
+  const SKIP_EXT = /\.(png|jpg|jpeg|gif|svg|ico|css|woff2?|ttf|eot|mp4|webp)(\?|$)/i;
+  const SKIP_DOMAINS = /fonts\.googleapis\.com|cdnjs\.cloudflare|cdn\.jsdelivr|unpkg\.com/;
+
+  for(const p of EP_PATTERNS){
+    const re = new RegExp(p.re.source, p.re.flags);
+    let m;
+    while((m = re.exec(code)) !== null){
+      const val = (m[1]||m[0]).trim();
+      if(!val || val.length < 3 || seen.has(val)) continue;
+      if(SKIP_EXT.test(val) || SKIP_DOMAINS.test(val)) continue;
+      seen.add(val);
+      if(!byLabel[p.label]) byLabel[p.label] = [];
+      byLabel[p.label].push(val);
+    }
+  }
+
+  sessionData.endpoint = [...seen];
+  updateStats();
+
+  const sum = document.getElementById('summary-endpoint');
+  const cards = document.getElementById('summary-cards-endpoint');
+  const total = seen.size;
+
+  if(!total){
+    sum.style.display='none';
+    out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Tidak ditemukan endpoint</div>';
+    return;
+  }
+
+  const apiPaths = [...seen].filter(v=>/(\/api|\/v[0-9]|\/auth|\/admin|\/internal|\/graphql)/i.test(v));
+  const fullUrls = [...seen].filter(v=>/^https?:\/\//.test(v));
+  cards.innerHTML = `
+    <div class="summary-card"><div class="summary-label">Total</div><div class="summary-val green">${total}</div></div>
+    <div class="summary-card"><div class="summary-label">API Paths</div><div class="summary-val amber">${apiPaths.length}</div></div>
+    <div class="summary-card"><div class="summary-label">Full URLs</div><div class="summary-val blue">${fullUrls.length}</div></div>
+  `;
+  sum.style.display='block';
+
+  let html = '';
+  for(const [label, vals] of Object.entries(byLabel)){
+    html += `<div class="result-group">
+      <div class="group-header"><span class="group-tag tag-endpoint">ENDPOINT</span><span style="font-size:12px;color:var(--text);">${label}</span><span class="group-count">${vals.length}</span></div>`;
+    for(const v of vals.slice(0,50)){
+      const display = v.length > 90 ? v.slice(0,60)+'…' : v;
+      const isInteresting = /(admin|internal|secret|debug|config|key|token|auth|graphql)/i.test(v);
+      html += `<div class="result-item" onclick="copyText('${v.replace(/'/g,"\\'")}')">
+        <span class="result-item-val">${esc(display)}${isInteresting?' <span style="font-size:10px;color:var(--amber);margin-left:6px;">★ interesting</span>':''}</span>
+        <span class="result-copy" onclick="event.stopPropagation();copyText('${v.replace(/'/g,"\\'")}',this)">copy</span>
+      </div>`;
+    }
+    if(vals.length>50) html += `<div class="result-item" style="color:var(--muted);">... +${vals.length-50} lainnya</div>`;
+    html += '</div>';
+  }
+  out.innerHTML = html;
+}
+
+function exportEndpoints(){
+  const text = sessionData.endpoint.join('\n');
+  if(!text){ alert('Jalankan Endpoint Mapper dulu'); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'endpoints.txt';
+  a.click();
+}
+
+/* ============================================================
+   SOURCE MAP HUNT
+   ============================================================ */
+function runSourceMap(){
+  const raw = document.getElementById('sm-input').value.trim();
+  const out = document.getElementById('sm-output');
+  if(!raw){ out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Input kosong</div>'; return; }
+
+  const urls = raw.split('\n').map(s=>s.trim()).filter(Boolean);
+  const candidates = [];
+
+  for(const url of urls){
+    const base = url.replace(/\?.*$/,'');
+    candidates.push(base+'.map');
+    candidates.push(base.replace(/\.js$/,'.js.map'));
+    candidates.push(base.replace(/\.js$/,'.map'));
+    const clean = base.replace(/\.[a-f0-9]{6,12}(\.js)?$/,'.js');
+    if(clean !== base) candidates.push(clean+'.map');
+    const filename = base.split('/').pop().replace(/\.[a-f0-9]{6,12}/,'');
+    candidates.push(new URL(base).origin+'/static/js/'+filename+'.map');
+    candidates.push(new URL(base).origin+'/'+filename+'.map');
+  }
+
+  const unique = [...new Set(candidates)];
+  sessionData.sourcemap = unique;
+  document.getElementById('nav-badge-sourcemap').textContent = unique.length;
+
+  let html = `<div class="result-group"><div class="group-header"><span class="group-tag tag-endpoint">MAP CANDIDATES</span><span class="group-count">${unique.length} URLs</span></div>`;
+  for(const c of unique){
+    html += `<div class="result-item"><span class="result-item-val">${esc(c)}</span><span class="result-copy" onclick="copyText('${c.replace(/'/g,"\\'")}',this)">copy</span></div>`;
+  }
+  html += '</div>';
+  out.innerHTML = html;
+}
+
+function checkSourceMapRef(){
+  const code = document.getElementById('sm-check-input').value.trim();
+  const out = document.getElementById('sm-check-output');
+  if(!code){ out.innerHTML='<div class="empty-state">Input kosong</div>'; return; }
+
+  const refs = [];
+  const re1 = /\/\/[#@]\s*sourceMappingURL\s*=\s*(.+)/g;
+  const re2 = /\/\*[#@]\s*sourceMappingURL\s*=\s*(.+?)\s*\*\//g;
+  let m;
+  while((m=re1.exec(code))!==null) refs.push(m[1].trim());
+  while((m=re2.exec(code))!==null) refs.push(m[1].trim());
+
+  if(!refs.length){
+    out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Tidak ada sourceMappingURL reference ditemukan</div>';
+    return;
+  }
+  let html = '<div class="result-group"><div class="group-header"><span class="group-tag tag-aws">FOUND</span><span style="font-size:12px;color:var(--text);">sourceMappingURL references</span></div>';
+  for(const r of refs){
+    html += `<div class="result-item"><span class="result-item-val">${esc(r)}</span><span class="result-copy" onclick="copyText('${r.replace(/'/g,"\\'")}',this)">copy</span></div>`;
+  }
+  html += '</div>';
+  out.innerHTML = html;
+}
+
+function exportSourceMapUrls(){
+  const text = sessionData.sourcemap.join('\n');
+  if(!text){ alert('Generate candidates dulu'); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'sourcemap-candidates.txt';
+  a.click();
+}
+
+/* ============================================================
+   ENTROPY SCANNER
+   ============================================================ */
+function shannonEntropy(str){
+  const freq = {};
+  for(const c of str) freq[c] = (freq[c]||0)+1;
+  const len = str.length;
+  return -Object.values(freq).reduce((acc,f)=>{ const p=f/len; return acc + p*Math.log2(p); },0);
+}
+
+function runEntropy(){
+  const code = document.getElementById('ent-input').value.trim();
+  const out = document.getElementById('ent-output');
+  if(!code){ out.innerHTML='<div class="empty-state">Input kosong</div>'; return; }
+
+  const STRING_RE = /["'`]([A-Za-z0-9+\/=\-_\.]{16,100})["'`]/g;
+  const results = [];
+  let m;
+  while((m=STRING_RE.exec(code))!==null){
+    const val = m[1];
+    const score = shannonEntropy(val);
+    if(score >= 3.5) results.push({ val, score: Math.round(score*100)/100 });
+  }
+
+  results.sort((a,b)=>b.score-a.score);
+  const unique = [];
+  const seen2 = new Set();
+  for(const r of results){ if(!seen2.has(r.val)){ seen2.add(r.val); unique.push(r); } }
+
+  sessionData.entropy = unique;
+  updateStats();
+
+  if(!unique.length){
+    out.innerHTML='<div class="empty-state"><span class="empty-icon">⬡</span>Tidak ditemukan string dengan entropi tinggi</div>';
+    return;
+  }
+
+  const critical = unique.filter(r=>r.score>=4.5);
+  const high = unique.filter(r=>r.score>=4.0 && r.score<4.5);
+  const medium = unique.filter(r=>r.score>=3.5 && r.score<4.0);
+
+  let html = '';
+  const render = (items, label, cls) => {
+    if(!items.length) return '';
+    let h = `<div class="result-group"><div class="group-header"><span class="group-tag ${cls}">${label}</span><span class="group-count">${items.length}</span></div>`;
+    for(const r of items.slice(0,30)){
+      const display = r.val.length>80 ? r.val.slice(0,50)+'…' : r.val;
+      h += `<div class="result-item">
+        <span class="result-item-val">${esc(display)}</span>
+        <span style="font-size:10px;color:var(--muted);margin-left:auto;padding-right:8px;flex-shrink:0;">H=${r.score}</span>
+        <span class="result-copy" onclick="copyText('${r.val.replace(/'/g,"\\'")}',this)">copy</span>
+      </div>`;
+    }
+    if(items.length>30) h+=`<div class="result-item" style="color:var(--muted);">... +${items.length-30} lainnya</div>`;
+    h += '</div>';
+    return h;
+  };
+  html += render(critical,'CRITICAL (&gt;4.5)','tag-key');
+  html += render(high,'HIGH (4.0–4.5)','tag-aws');
+  html += render(medium,'MEDIUM (3.5–4.0)','tag-token');
+  out.innerHTML = html;
+}
+
+/* ============================================================
+   REPORT BUILDER
+   ============================================================ */
+function buildReport(){
+  const target = document.getElementById('rpt-target').value || 'target.example.com';
+  const platform = document.getElementById('rpt-platform').value || 'Bug Bounty Program';
+  const date = new Date().toISOString().slice(0,10);
+
+  const secretTotal = sessionData.analyzer.reduce((a,g)=>a+g.matches.length,0);
+  const epTotal = sessionData.endpoint.length;
+  const entropyTotal = sessionData.entropy.filter(e=>e.score>=4.0).length;
+  const severity = secretTotal >= 3 ? 'Critical' : secretTotal >= 1 ? 'High' : epTotal > 10 ? 'Medium' : 'Low';
+
+  const secretSection = sessionData.analyzer.map(g=>
+    `### ${g.label}\n` + g.matches.map(v=>`- \`${v.slice(0,60)}\``).join('\n')
+  ).join('\n\n') || '_(tidak ada)_';
+
+  const epSection = sessionData.endpoint.slice(0,20).map(v=>`- \`${v}\``).join('\n') || '_(tidak ada)_';
+
+  const report = `# Bug Report — Exposed Credentials in JS File
+
+**Target:** ${target}
+**Program:** ${platform}
+**Date:** ${date}
+**Severity:** ${severity}
+
+---
+
+## Summary
+
+Sensitive information found exposed in publicly accessible JavaScript files on \`${target}\`.
+The exposed data includes credentials, API keys, and internal endpoint configurations that
+could be used to gain unauthorized access to backend services.
+
+---
+
+## Findings
+
+### 1. Exposed Secrets & Credentials
+Total: ${secretTotal} item(s) ditemukan
+
+${secretSection}
+
+### 2. Internal API Endpoints
+Total: ${epTotal} endpoint(s) ditemukan
+
+${epSection}
+
+### 3. High Entropy Strings
+Total: ${entropyTotal} string(s) dengan entropy tinggi (kemungkinan tambahan secrets)
+
+---
+
+## Steps to Reproduce
+
+1. Browse to \`https://${target}\`
+2. Open browser DevTools → Network tab
+3. Filter by JS files
+4. Download and inspect JS bundle files
+5. Search for keywords: \`userPoolId\`, \`clientId\`, \`apiKey\`, \`secret\`
+6. (Optional) Use sourcemapper tool to extract source maps for readable code
+
+---
+
+## Impact
+
+- Exposed AWS Cognito credentials dapat memungkinkan unauthorized account registration
+- API keys dapat digunakan untuk akses unauthorized ke third-party services
+- Internal endpoints dapat menjadi attack surface tambahan
+
+---
+
+## Remediation
+
+- Hapus semua credentials dari client-side JavaScript
+- Gunakan environment variables di server-side, bukan di frontend bundle
+- Nonaktifkan source maps di production build
+- Rotasi semua credentials yang terekspos segera
+- Implementasikan Content Security Policy (CSP)
+
+---
+
+_Generated by JS Recon Tool_
+`;
+
+  document.getElementById('report-output').textContent = report;
+}
+
+function copyReport(){
+  const text = document.getElementById('report-output').textContent;
+  if(!text || text.includes('empty-state')){ alert('Generate report dulu'); return; }
+  copyText(text);
+}
+
+function downloadReport(){
+  const text = document.getElementById('report-output').textContent;
+  if(!text || text.includes('empty-state')){ alert('Generate report dulu'); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(text);
+  a.download = 'bug-report.md';
+  a.click();
+}
+
+/* ============================================================
+   SAMPLE DATA
+   ============================================================ */
+function loadSampleAnalyzer(){
+  document.getElementById('js-input').value = `
+(function(e){
+  var config = {
+    userPoolId: "us-east-1_aBcDeFgHi",
+    clientId: "1a2b3c4d5e6f7g8h9i0jklmnop",
+    identityPoolId: "us-east-1:12345678-abcd-efgh-ijkl-000000000000",
+    region: "us-east-1",
+    apiKey: "sk-live-abc123XYZ456def789GHI012jklMNO",
+    stripeKey: "pk_live_abcdefghijklmnopqrstuvwxyz12345678",
+  };
+  var firebaseConfig = {
+    apiKey: "AIzaSyAbcdefGHIJKLmnopQRSTUVwxyz123456",
+    authDomain: "myapp-12345.firebaseapp.com",
+    projectId: "myapp-12345",
+  };
+  var secret = "SuperSecret$Pass!Word123";
+  var token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+})();
+`;
+  updateCharCount('js-input','cc-analyzer');
+  runAnalyzer();
+}
+
+function loadSampleEndpoint(){
+  document.getElementById('ep-input').value = `
+const API_BASE = "https://api.internal.example.com";
+const endpoints = {
+  login: "/auth/login",
+  logout: "/auth/logout",
+  users: "/api/v2/users",
+  adminPanel: "/admin/dashboard",
+  config: "/api/internal/config",
+  graphql: "/graphql",
+};
+fetch("/api/v1/products?limit=10").then(r=>r.json());
+axios.post("/auth/token/refresh", { token });
+axios.get(API_BASE + "/api/v3/billing/secret-plans");
+var xhr = new XMLHttpRequest();
+xhr.open("GET", "/api/debug/env-vars");
+`;
+  updateCharCount('ep-input','cc-ep');
+  runEndpoint();
+}
+
+function loadSampleEntropy(){
+  document.getElementById('ent-input').value = `
+var token = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+var id = "user-123";
+var key = "AIzaSyAbcdefGHIJKLmnopQRSTUVwxyz123456";
+var normal = "hello world this is a sentence";
+var hash = "5f4dcc3b5aa765d61d8327deb882cf99";
+var jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+`;
+  updateCharCount('ent-input','cc-ent');
+  runEntropy();
+}
+</script>
+</body>
+</html>
