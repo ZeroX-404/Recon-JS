@@ -477,6 +477,49 @@ input[type=text]:focus{border-color:var(--border-h)}
   margin-top:3rem;
 }
 
+/* ───── AUTO FETCH ───── */
+.fetch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem}
+@media(max-width:600px){.fetch-grid{grid-template-columns:1fr}}
+.proxy-sel{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.proxy-btn{
+  padding:5px 10px;border-radius:4px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);
+  font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.15s;
+}
+.proxy-btn.active{border-color:rgba(0,232,122,0.4);background:var(--g-dim);color:var(--g)}
+.fetch-log{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;margin-bottom:1rem;
+}
+.fetch-log-header{
+  background:var(--card2);border-bottom:1px solid var(--border);
+  padding:8px 14px;font-size:10px;color:var(--muted);
+  display:flex;align-items:center;justify-content:space-between;
+  letter-spacing:0.08em;text-transform:uppercase;
+}
+.fetch-log-body{padding:10px 14px;font-size:11px;line-height:1.9;min-height:60px;max-height:260px;overflow-y:auto}
+.fetch-item{display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.fetch-item:last-child{border-bottom:none}
+.fetch-url{flex:1;color:#8fa0b8;word-break:break-all;font-size:11px}
+.fetch-status{flex-shrink:0;font-size:10px;font-weight:600;width:60px;text-align:right}
+.fs-ok{color:var(--g)} .fs-err{color:var(--red)} .fs-loading{color:var(--amber)}
+.fetch-size{flex-shrink:0;font-size:10px;color:var(--muted);width:50px;text-align:right}
+.progress-wrap{height:3px;background:var(--border);border-radius:2px;margin:10px 0 6px}
+.progress-fill{height:100%;background:var(--g);border-radius:2px;transition:width 0.3s;width:0%}
+.fetch-summary{
+  display:flex;gap:1rem;flex-wrap:wrap;padding:10px 14px;
+  background:var(--card2);border-top:1px solid var(--border);
+  font-size:11px;
+}
+.fetch-sum-item{display:flex;align-items:center;gap:5px}
+.stat-badge{padding:1px 7px;border-radius:3px;font-size:10px;font-weight:600}
+.badge-g{background:var(--g-dim);color:var(--g)} .badge-r{background:var(--red-dim);color:var(--red)}
+.auto-pipe-note{
+  background:rgba(0,232,122,0.06);border:1px solid rgba(0,232,122,0.15);
+  border-radius:6px;padding:10px 14px;font-size:11px;color:rgba(0,232,122,0.7);
+  margin-top:10px;line-height:1.7;
+}
+
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -493,7 +536,7 @@ input[type=text]:focus{border-color:var(--border-h)}
       <path d="M5 11h4M13 11h4M9 7l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
     JS RECON
-    <span class="logo-badge">v2.0</span>
+    <span class="logo-badge">v3.0</span>
   </div>
   <div class="header-right">
     <div class="status-dot"></div>
@@ -526,14 +569,21 @@ input[type=text]:focus{border-color:var(--border-h)}
 
   <!-- Step Navigator -->
   <div class="steps">
-    <button class="step-btn active" onclick="switchStep(0)">
+    <button class="step-btn" onclick="switchStep(0)" style="border-left:2px solid rgba(0,232,122,0.3)">
+      <div class="step-num" style="font-size:9px;border-color:rgba(0,232,122,0.5)">⚡</div>
+      <div class="step-label">
+        <div class="step-title">Auto Fetch</div>
+        <div class="step-sub">Fetch+Scan</div>
+      </div>
+    </button>
+    <button class="step-btn active" onclick="switchStep(1)">
       <div class="step-num">1</div>
       <div class="step-label">
         <div class="step-title">JS Analyzer</div>
         <div class="step-sub">Secrets & Keys</div>
       </div>
     </button>
-    <button class="step-btn" onclick="switchStep(1)">
+    <button class="step-btn" onclick="switchStep(2)">
       <div class="step-num">2</div>
       <div class="step-label">
         <div class="step-title">Endpoints</div>
@@ -541,27 +591,34 @@ input[type=text]:focus{border-color:var(--border-h)}
       </div>
     </button>
     <button class="step-btn" onclick="switchStep(2)">
+      <div class="step-num">2</div>
+      <div class="step-label">
+        <div class="step-title">Endpoints</div>
+        <div class="step-sub">API Mapper</div>
+      </div>
+    </button>
+    <button class="step-btn" onclick="switchStep(3)">
       <div class="step-num">3</div>
       <div class="step-label">
         <div class="step-title">Source Maps</div>
         <div class="step-sub">Hunt .map files</div>
       </div>
     </button>
-    <button class="step-btn" onclick="switchStep(3)">
+    <button class="step-btn" onclick="switchStep(4)">
       <div class="step-num">4</div>
       <div class="step-label">
         <div class="step-title">Entropy</div>
         <div class="step-sub">Unknown secrets</div>
       </div>
     </button>
-    <button class="step-btn" onclick="switchStep(4)">
+    <button class="step-btn" onclick="switchStep(5)">
       <div class="step-num">5</div>
       <div class="step-label">
         <div class="step-title">Report</div>
         <div class="step-sub">Export & Submit</div>
       </div>
     </button>
-    <button class="step-btn" onclick="switchStep(5)">
+    <button class="step-btn" onclick="switchStep(6)">
       <div class="step-num">?</div>
       <div class="step-label">
         <div class="step-title">CLI Ref</div>
@@ -570,8 +627,87 @@ input[type=text]:focus{border-color:var(--border-h)}
     </button>
   </div>
 
+  <!-- ═══ STEP 0: AUTO FETCH ═══ -->
+  <div class="panel" id="panel-0">
+    <div class="panel-head">
+      <div class="panel-title"><span class="hl">⚡</span> — Auto Fetch & Scan</div>
+      <div class="panel-desc">Input base URL target + paste list JS paths. Tool akan auto-combine, fetch semua file via CORS proxy, lalu langsung pipe hasilnya ke semua analyzer.</div>
+    </div>
+
+    <div class="guide">
+      <div class="guide-title">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5.5v3M6 3.5h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Cara pakai
+      </div>
+      <div class="guide-steps">
+        <div class="guide-step"><span class="guide-step-n">1.</span><span>Isi <strong>Base URL</strong> target. Contoh: <code>https://cloud.oppo.com</code></span></div>
+        <div class="guide-step"><span class="guide-step-n">2.</span><span>Paste list JS paths (satu per baris). Contoh: <code>/js/chunk-vue-core.f5d09359.js</code></span></div>
+        <div class="guide-step"><span class="guide-step-n">3.</span><span>Pilih CORS Proxy, lalu klik <strong>Fetch All &amp; Scan</strong></span></div>
+        <div class="guide-step"><span class="guide-step-n">4.</span><span>Setelah selesai, semua hasil otomatis tersedia di Step 1–4. Klik stats bar untuk lompat ke tiap step.</span></div>
+      </div>
+    </div>
+
+    <div class="fetch-grid">
+      <div class="input-block" style="margin:0">
+        <div class="input-label"><span>Base URL Target</span></div>
+        <input type="text" id="fetch-baseurl" placeholder="https://cloud.oppo.com" style="height:42px"/>
+      </div>
+      <div>
+        <div class="input-label"><span>CORS Proxy</span></div>
+        <div class="proxy-sel" id="proxy-sel">
+          <button class="proxy-btn active" data-proxy="https://corsproxy.io/?" onclick="setProxy(this)">corsproxy.io</button>
+          <button class="proxy-btn" data-proxy="https://api.allorigins.win/raw?url=" onclick="setProxy(this)">allorigins</button>
+          <button class="proxy-btn" data-proxy="https://thingproxy.freeboard.io/fetch/" onclick="setProxy(this)">thingproxy</button>
+          <button class="proxy-btn" data-proxy="" onclick="setProxy(this)">direct (no proxy)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-block">
+      <div class="input-label">
+        <span>JS Paths (satu per baris)</span>
+        <span class="char-c" id="fetch-linecount">0 paths</span>
+      </div>
+      <textarea id="fetch-paths" placeholder="/js/chunk-vue-core.f5d09359.js&#10;/js/chunk-vendors-base.0b397a4c.js&#10;/js/chunk-vendors-ext.2c78de7f.js&#10;/js/chunk-common.0d2c7795.js&#10;/js/index.7f94e0a8.js" style="min-height:120px" oninput="updateFetchCount()"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-g" id="fetch-btn" onclick="startAutoFetch()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 1v6M3 4l3-3 3 3M2 9h8v2H2z"/></svg>
+        Fetch All &amp; Scan
+      </button>
+      <button class="btn btn-o" onclick="clearAutoFetch()">Clear</button>
+    </div>
+
+    <div class="fetch-log" id="fetch-log-wrap" style="display:none">
+      <div class="fetch-log-header">
+        <span>Fetch Progress</span>
+        <span id="fetch-progress-text" style="color:var(--muted)">0 / 0</span>
+      </div>
+      <div class="fetch-log-body" id="fetch-log-body"></div>
+      <div class="progress-wrap" style="margin:0;border-radius:0">
+        <div class="progress-fill" id="fetch-progress-bar"></div>
+      </div>
+      <div class="fetch-summary" id="fetch-summary" style="display:none">
+        <div class="fetch-sum-item">
+          <span class="stat-badge badge-g" id="fsum-ok">0 OK</span>
+        </div>
+        <div class="fetch-sum-item">
+          <span class="stat-badge badge-r" id="fsum-err">0 Error</span>
+        </div>
+        <div class="fetch-sum-item" style="color:var(--muted)">
+          Total: <span id="fsum-size">0 KB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="auto-pipe-note" id="fetch-done-note" style="display:none">
+      ✓ Fetch selesai — hasil sudah di-pipe ke <strong>Step 1 (JS Analyzer)</strong>, <strong>Step 2 (Endpoints)</strong>, dan <strong>Step 4 (Entropy)</strong>. Klik step yang sesuai untuk lihat hasil scan.
+    </div>
+  </div>
+
   <!-- ═══ STEP 1: JS ANALYZER ═══ -->
-  <div class="panel active" id="panel-0">
+  <div class="panel active" id="panel-1">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">01</span> — JS Analyzer</div>
       <div class="panel-desc">Paste isi file JS dari target. Tool akan scan otomatis untuk AWS keys, API keys, Cognito config, Firebase, JWT, dan credentials lainnya.</div>
@@ -619,7 +755,7 @@ input[type=text]:focus{border-color:var(--border-h)}
   </div>
 
   <!-- ═══ STEP 2: ENDPOINTS ═══ -->
-  <div class="panel" id="panel-1">
+  <div class="panel" id="panel-2">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">02</span> — Endpoint Mapper</div>
       <div class="panel-desc">Ekstrak semua endpoint API dari JS. Deteksi fetch(), axios, XHR, baseURL, dan path patterns termasuk endpoint admin/internal yang menarik.</div>
@@ -667,7 +803,7 @@ input[type=text]:focus{border-color:var(--border-h)}
   </div>
 
   <!-- ═══ STEP 3: SOURCE MAPS ═══ -->
-  <div class="panel" id="panel-2">
+  <div class="panel" id="panel-3">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">03</span> — Source Map Hunter</div>
       <div class="panel-desc">Generate kandidat URL .map files dari URL JS. Source maps sering mengandung source code asli yang belum di-minify — jackpot untuk bug hunting.</div>
@@ -723,7 +859,7 @@ input[type=text]:focus{border-color:var(--border-h)}
   </div>
 
   <!-- ═══ STEP 4: ENTROPY ═══ -->
-  <div class="panel" id="panel-3">
+  <div class="panel" id="panel-4">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">04</span> — Entropy Scanner</div>
       <div class="panel-desc">Deteksi secrets yang tidak dikenal polanya menggunakan Shannon Entropy. String dengan entropy tinggi kemungkinan besar adalah API key atau password.</div>
@@ -764,7 +900,7 @@ input[type=text]:focus{border-color:var(--border-h)}
   </div>
 
   <!-- ═══ STEP 5: REPORT ═══ -->
-  <div class="panel" id="panel-4">
+  <div class="panel" id="panel-5">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">05</span> — Report Builder</div>
       <div class="panel-desc">Generate draft laporan bug bounty profesional dari semua hasil temuan di step 1–4. Isi form dan klik Generate.</div>
@@ -803,7 +939,7 @@ input[type=text]:focus{border-color:var(--border-h)}
   </div>
 
   <!-- ═══ STEP 6: CLI REFERENCE ═══ -->
-  <div class="panel" id="panel-5">
+  <div class="panel" id="panel-6">
     <div class="panel-head">
       <div class="panel-title"><span class="hl">CLI</span> — Referensi Command</div>
       <div class="panel-desc">Command-command yang dipakai sebelum paste ke tool ini. Workflow lengkap dari awal recon sampai ambil semua JS.</div>
@@ -929,6 +1065,122 @@ while read url; do <span class="cmd">curl</span> <span class="flag">-s</span> <s
 
 /* ─── State ─── */
 const S = { secrets:0, endpoints:[], entropy:[], sourcemaps:[], analyzerGroups:[] };
+
+/* ─── AUTO FETCH ─── */
+let selectedProxy = 'https://corsproxy.io/?';
+
+function setProxy(btn){
+  document.querySelectorAll('.proxy-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedProxy = btn.dataset.proxy;
+}
+
+function updateFetchCount(){
+  const lines = $('fetch-paths').value.split('\n').filter(l=>l.trim()).length;
+  $('fetch-linecount').textContent = lines + ' paths';
+}
+
+function clearAutoFetch(){
+  $('fetch-baseurl').value='';
+  $('fetch-paths').value='';
+  $('fetch-linecount').textContent='0 paths';
+  $('fetch-log-wrap').style.display='none';
+  $('fetch-done-note').style.display='none';
+}
+
+async function startAutoFetch(){
+  const base = $('fetch-baseurl').value.trim().replace(/\/$/,'');
+  const rawPaths = $('fetch-paths').value.trim();
+  if(!base){alert('Isi Base URL dulu!');return;}
+  if(!rawPaths){alert('Isi JS paths dulu!');return;}
+
+  const paths = rawPaths.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!paths.length){alert('Tidak ada paths valid');return;}
+
+  // Build full URLs
+  const urls = paths.map(p=>{
+    if(p.startsWith('http')) return p;
+    return base + (p.startsWith('/')? p : '/'+p);
+  });
+
+  // UI setup
+  $('fetch-log-wrap').style.display='block';
+  $('fetch-summary').style.display='none';
+  $('fetch-done-note').style.display='none';
+  $('fetch-btn').disabled=true;
+  $('fetch-btn').textContent='Fetching...';
+
+  const logBody = $('fetch-log-body');
+  logBody.innerHTML='';
+
+  // Create log items
+  const logItems = urls.map((url,i)=>{
+    const div = document.createElement('div');
+    div.className='fetch-item';
+    div.id='fitem-'+i;
+    div.innerHTML=`<span class="fetch-url">${esc(url)}</span><span class="fetch-status fs-loading" id="fst-${i}">⏳ waiting</span><span class="fetch-size" id="fsz-${i}"></span>`;
+    logBody.appendChild(div);
+    return div;
+  });
+
+  let ok=0, err=0, totalBytes=0;
+  const allCode = [];
+
+  for(let i=0; i<urls.length; i++){
+    $('fetch-progress-text').textContent = `${i+1} / ${urls.length}`;
+    $('fetch-progress-bar').style.width = ((i+1)/urls.length*100)+'%';
+    $(`fst-${i}`).textContent='🔄 fetching';
+    $(`fst-${i}`).className='fetch-status fs-loading';
+    logBody.scrollTop=logBody.scrollHeight;
+
+    try {
+      const proxyUrl = selectedProxy ? selectedProxy + encodeURIComponent(urls[i]) : urls[i];
+      const res = await fetch(proxyUrl, {signal: AbortSignal.timeout(15000)});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const text = await res.text();
+      const kb = (text.length/1024).toFixed(1);
+      allCode.push(text);
+      totalBytes += text.length;
+      ok++;
+      $(`fst-${i}`).textContent='✓ OK';
+      $(`fst-${i}`).className='fetch-status fs-ok';
+      $(`fsz-${i}`).textContent=kb+'KB';
+    } catch(e) {
+      err++;
+      $(`fst-${i}`).textContent='✗ '+e.message.slice(0,20);
+      $(`fst-${i}`).className='fetch-status fs-err';
+    }
+  }
+
+  // Done — pipe to analyzers
+  const combined = allCode.join('\n\n/* === next file === */\n\n');
+
+  if(combined.trim()){
+    $('js-input').value = combined;
+    $('ep-input').value = combined;
+    $('ent-input').value = combined;
+    // Also fill sourcemap URL input
+    $('sm-url-input').value = urls.join('\n');
+
+    // Auto-run all analyzers
+    runAnalyzer();
+    runEndpoint();
+    runEntropy();
+    runSourceMap();
+  }
+
+  // Summary
+  $('fetch-summary').style.display='flex';
+  $('fsum-ok').textContent = ok+' OK';
+  $('fsum-err').textContent = err+' Error';
+  $('fsum-size').textContent = (totalBytes/1024).toFixed(1)+' KB';
+  $('fetch-btn').disabled=false;
+  $('fetch-btn').innerHTML='<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 1v6M3 4l3-3 3 3M2 9h8v2H2z"/></svg> Fetch Again';
+
+  if(combined.trim()){
+    $('fetch-done-note').style.display='block';
+  }
+}
 
 /* ─── Helpers ─── */
 const $ = id => document.getElementById(id);
